@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Game Leaderboard - Live</title>
+    <title>MY MAA MARKETS - Lucky Contest Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
     <style>
         :root {
-            --color-background: #1a1a2e;
-            --color-surface: #16213e;
-            --color-primary: #0f3460;
-            --color-accent: #e94560;
+            --color-background: #0a1628;
+            --color-surface: rgba(22, 33, 62, 0.85);
+            --color-primary: #1e3a5f;
+            --color-accent: #00bcd4;
             --color-gold: #ffd700;
             --color-silver: #c0c0c0;
             --color-bronze: #cd7f32;
             --color-text: #ffffff;
-            --color-text-secondary: #a0a0a0;
+            --color-text-secondary: #a0c4e0;
+            --color-cyan: #00d9ff;
         }
 
         * {
@@ -24,43 +26,66 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--color-background) 0%, var(--color-primary) 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji';
+            background: url('MMM Plane Background.png') no-repeat center top fixed;
+            background-size: cover;
             color: var(--color-text);
             min-height: 100vh;
-            padding: 20px;
+            padding: 120px 20px 20px 20px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(10, 22, 40, 0.3) 0%,
+                rgba(10, 22, 40, 0.85) 120px,
+                rgba(10, 22, 40, 0.85) 100%
+            );
+            z-index: -1;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
+            width: 100%;
             margin: 0 auto;
+            padding: 0;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             animation: fadeInDown 0.8s ease-out;
         }
 
         .header h1 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            background: linear-gradient(45deg, var(--color-accent), var(--color-gold));
+            background: linear-gradient(45deg, var(--color-cyan), var(--color-gold));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            filter: drop-shadow(0 0 15px rgba(0, 217, 255, 0.4));
         }
 
         .header p {
             color: var(--color-text-secondary);
-            font-size: 1.2rem;
+            font-size: 1.1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         .stats-bar {
             display: flex;
             justify-content: center;
-            gap: 30px;
-            margin-bottom: 40px;
+            gap: 20px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
             animation: fadeIn 1s ease-out 0.3s both;
         }
@@ -69,21 +94,26 @@
             background: var(--color-surface);
             padding: 20px 30px;
             border-radius: 15px;
-            border: 2px solid var(--color-primary);
+            border: 2px solid var(--color-cyan);
             min-width: 150px;
             text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 188, 212, 0.2);
         }
 
         .stat-card .label {
             color: var(--color-text-secondary);
             font-size: 0.9rem;
             margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .stat-card .value {
             font-size: 2rem;
             font-weight: bold;
-            color: var(--color-accent);
+            color: var(--color-cyan);
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
         }
 
         .main-content {
@@ -97,28 +127,45 @@
             .main-content {
                 grid-template-columns: 1fr;
             }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            body {
+                padding-top: 80px;
+            }
+
+            .recent-submissions {
+                max-height: 400px;
+            }
         }
 
         .top-winners {
             background: var(--color-surface);
             border-radius: 20px;
-            padding: 30px;
-            border: 3px solid var(--color-accent);
-            box-shadow: 0 10px 40px rgba(233, 69, 96, 0.3);
+            padding: 25px;
+            border: 3px solid var(--color-cyan);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.3);
+            backdrop-filter: blur(10px);
         }
 
         .top-winners h2 {
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 2rem;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
         }
 
         .podium {
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .podium-item {
@@ -142,23 +189,24 @@
         }
 
         .podium-rank {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 3rem;
             font-weight: bold;
-            margin: 0 auto 15px;
+            margin: 0 auto 10px;
             position: relative;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
         }
 
         .podium-item.first .podium-rank {
             background: linear-gradient(135deg, var(--color-gold) 0%, #ffed4e 100%);
             color: #000;
-            width: 140px;
-            height: 140px;
+            width: 120px;
+            height: 120px;
             box-shadow: 0 0 30px var(--color-gold);
         }
 
@@ -177,6 +225,7 @@
             top: -30px;
             font-size: 2rem;
             animation: bounce 2s infinite;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
         }
 
         .podium-name {
@@ -194,23 +243,55 @@
         .podium-score {
             font-size: 1.5rem;
             font-weight: bold;
-            color: var(--color-accent);
+            color: var(--color-cyan);
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
         }
 
         .recent-submissions {
             background: var(--color-surface);
             border-radius: 20px;
-            padding: 30px;
-            border: 2px solid var(--color-primary);
+            padding: 25px;
+            border: 2px solid var(--color-cyan);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 188, 212, 0.2);
+            display: flex;
+            flex-direction: column;
+            max-height: 600px;
         }
 
         .recent-submissions h2 {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        #recentList {
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            padding-right: 10px;
+        }
+
+        #recentList::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #recentList::-webkit-scrollbar-track {
+            background: rgba(30, 58, 95, 0.3);
+            border-radius: 10px;
+        }
+
+        #recentList::-webkit-scrollbar-thumb {
+            background: var(--color-cyan);
+            border-radius: 10px;
+        }
+
+        #recentList::-webkit-scrollbar-thumb:hover {
+            background: var(--color-accent);
         }
 
         .submission-item {
-            background: var(--color-primary);
+            background: rgba(30, 58, 95, 0.6);
             padding: 15px;
             border-radius: 10px;
             margin-bottom: 10px;
@@ -218,12 +299,21 @@
             justify-content: space-between;
             align-items: center;
             animation: slideInRight 0.5s ease-out;
-            border-left: 4px solid var(--color-accent);
+            border-left: 4px solid var(--color-cyan);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+
+        .submission-item:hover {
+            background: rgba(30, 58, 95, 0.8);
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(0, 217, 255, 0.3);
         }
 
         .submission-item.new {
             animation: pulse 1s ease-out, slideInRight 0.5s ease-out;
             border-left-color: var(--color-gold);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
         }
 
         .submission-info {
@@ -243,7 +333,8 @@
         .submission-score {
             font-size: 1.5rem;
             font-weight: bold;
-            color: var(--color-accent);
+            color: var(--color-cyan);
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
         }
 
         .controls {
@@ -267,13 +358,13 @@
         }
 
         .btn-primary {
-            background: var(--color-accent);
+            background: linear-gradient(135deg, var(--color-cyan), #0097a7);
             color: white;
         }
 
         .btn-primary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.5);
+            box-shadow: 0 8px 20px rgba(0, 217, 255, 0.6);
         }
 
         .btn-secondary {
@@ -421,14 +512,15 @@
         .empty-state .icon {
             font-size: 4rem;
             margin-bottom: 20px;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎮 WhatsApp Game Challenge</h1>
-            <p>Send a message to WhatsApp and win prizes!</p>
+            <h1>MY MAA MARKETS - Lucky Contest</h1>
+            <p>Participate in Doha Expo and Win Amazing Prizes!</p>
         </div>
 
         <div class="stats-bar">
@@ -471,7 +563,7 @@
 
     <div class="controls">
         <button class="btn btn-primary" onclick="openTestModal()">+ Test Entry</button>
-        <button class="btn btn-secondary" onclick="resetGame()">🔄 Reset</button>
+        <button class="btn btn-secondary" onclick="resetGame()">Reset</button>
     </div>
 
     <div class="modal" id="testModal">
@@ -498,25 +590,63 @@
         let endTime = null;
 
         // Initialize
-        function init() {
-            loadFromLocalStorage();
+        async function init() {
+            // Load CSV data
+            await loadCSVData();
+
+            // Load any additional data from local storage
+            const savedEndTime = localStorage.getItem('gameEndTime');
+            if (savedEndTime) {
+                endTime = parseInt(savedEndTime, 10);
+            }
+
             if (!endTime) {
                 // Set end time to 8 hours from now (typical expo day)
                 endTime = new Date().getTime() + (8 * 60 * 60 * 1000);
-                saveToLocalStorage();
+                localStorage.setItem('gameEndTime', endTime);
             }
+
             updateDisplay();
             startTimer();
-            
-            // Simulate real-time updates for demo
-            setInterval(checkForNewEntries, 2000);
+
+            // Periodically reload CSV data for updates
+            setInterval(loadCSVData, 30000); // Refresh every 30 seconds
+        }
+
+        // Load data from CSV file
+        async function loadCSVData() {
+            try {
+                const response = await fetch('Event Leads v1 - Sheet1.csv');
+                const csvText = await response.text();
+                const rows = csvText.split('\n').slice(1); // Skip header
+
+                players = rows
+                    .map(row => {
+                        const columns = row.split(',');
+                        if (columns.length >= 5 && columns[2] && columns[3] && columns[4]) {
+                            return {
+                                name: columns[2].trim(),
+                                phone: columns[3].trim(),
+                                score: parseInt(columns[4].trim()) || 0,
+                                timestamp: new Date(columns[1] || Date.now()).getTime(),
+                                isNew: false
+                            };
+                        }
+                        return null;
+                    })
+                    .filter(p => p !== null && p.name && p.score > 0);
+
+                updateDisplay();
+            } catch (error) {
+                console.error('Error loading CSV data:', error);
+            }
         }
 
         // Add new player entry
-        function addPlayer(name, phone) {
+        async function addPlayer(name, phone) {
             const score = Math.floor(Math.random() * 1001); // 0-1000
             const timestamp = new Date().getTime();
-            
+
             const player = {
                 name: name,
                 phone: phone,
@@ -524,17 +654,29 @@
                 timestamp: timestamp,
                 isNew: true
             };
-            
+
+            // Add to players array
             players.push(player);
-            saveToLocalStorage();
+
+            // Save to CSV by appending a new row
+            const csvRow = `Doha Expo,${new Date(timestamp).toISOString()},${name},${phone},${score}\n`;
+
+            try {
+                // Note: In a real implementation, you would need a backend to write to CSV
+                // For demo purposes, we'll just update the UI
+                console.log('New entry:', csvRow);
+            } catch (error) {
+                console.error('Error saving to CSV:', error);
+            }
+
             updateDisplay();
-            
+
             // Remove new flag after animation
             setTimeout(() => {
                 player.isNew = false;
                 updateDisplay();
             }, 1000);
-            
+
             return score;
         }
 
@@ -693,27 +835,25 @@
             }
         }
 
-        // Local storage
-        function saveToLocalStorage() {
-            localStorage.setItem('gameData', JSON.stringify({
-                players: players,
-                endTime: endTime
-            }));
-        }
+        // Auto-refresh handler
+        let lastPlayerCount = 0;
 
-        function loadFromLocalStorage() {
-            const data = localStorage.getItem('gameData');
-            if (data) {
-                const parsed = JSON.parse(data);
-                players = parsed.players || [];
-                endTime = parsed.endTime;
+        async function checkForNewEntries() {
+            if (players.length > lastPlayerCount) {
+                // New entries detected, mark them
+                const newCount = players.length - lastPlayerCount;
+                for (let i = players.length - newCount; i < players.length; i++) {
+                    players[i].isNew = true;
+                }
+                updateDisplay();
+
+                // Remove new flag after animation
+                setTimeout(() => {
+                    players.forEach(p => p.isNew = false);
+                    updateDisplay();
+                }, 2000);
             }
-        }
-
-        // Simulate checking for new entries (in real app, this would be webhook)
-        function checkForNewEntries() {
-            // This function would poll your backend or receive webhook data
-            // For now, it's just a placeholder for the real implementation
+            lastPlayerCount = players.length;
         }
 
         // Initialize on load
