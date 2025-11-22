@@ -27,7 +27,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji';
-            background: url('MMM Plane Background.png') no-repeat center center fixed;
+            background: url('MMM Plane Background Plain.png') no-repeat center center fixed;
             background-size: cover;
             color: var(--color-text);
             min-height: 100vh;
@@ -516,13 +516,27 @@
             margin-bottom: 20px;
             font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
         }
+
+        .logo {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            max-width: 300px;
+            max-height: 150px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+        }
     </style>
 </head>
 <body>
+    <img src="logo.png" alt="Logo" class="logo">
     <div class="container">
         <div class="header">
-            <h1>MY MAA MARKETS - Lucky Contest</h1>
-            <p>Participate in Doha Expo and Win Amazing Prizes!</p>
+            <h1>Fortune Quest Money Expo Qatar 2025</h1>
+            <p>Text your name on WhatsApp to participate and WIN!</p>
         </div>
 
         <div class="stats-bar">
