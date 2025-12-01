@@ -578,27 +578,10 @@
     </div>
 
     <div class="controls">
-        <button class="btn btn-primary" onclick="openTestModal()">+ Test Entry</button>
         <button class="btn btn-secondary" onclick="resetGame()">Reset</button>
     </div>
 
-    <div class="modal" id="testModal">
-        <div class="modal-content">
-            <h2>Add Test Entry</h2>
-            <div class="form-group">
-                <label>Name</label>
-                <input type="text" id="testName" placeholder="Enter name">
-            </div>
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input type="text" id="testPhone" placeholder="+971501234567">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-secondary" onclick="closeTestModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="addTestEntry()">Add Entry</button>
-            </div>
-        </div>
-    </div>
+    
 
     <script>
         // Data storage
@@ -946,32 +929,7 @@
             return phone.substring(0, 4) + '***' + phone.substring(phone.length - 3);
         }
 
-        // Modal functions
-        function openTestModal() {
-            document.getElementById('testModal').classList.add('active');
-        }
-
-        function closeTestModal() {
-            document.getElementById('testModal').classList.remove('active');
-            document.getElementById('testName').value = '';
-            document.getElementById('testPhone').value = '';
-        }
-
-        function addTestEntry() {
-            const name = document.getElementById('testName').value.trim();
-            const phone = document.getElementById('testPhone').value.trim();
-            
-            if (!name || !phone) {
-                alert('Please fill in all fields');
-                return;
-            }
-            
-            const score = addPlayer(name, phone);
-            closeTestModal();
-            
-            // Show notification
-            alert(`${name} scored ${score} points!`);
-        }
+        // (Test entry UI removed) Modal helper functions were removed as part of cleanup
 
         // Reset game
         function resetGame() {
