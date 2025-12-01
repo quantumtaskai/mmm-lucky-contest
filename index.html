@@ -607,8 +607,8 @@
 
         // Initialize
         async function init() {
-            // Load CSV data
-            await loadCSVData();
+            // Load data from webhook (with CSV fallback)
+            await loadRemoteData();
 
             // Load any additional data from local storage
             const savedEndTime = localStorage.getItem('gameEndTime');
@@ -625,36 +625,118 @@
             updateDisplay();
             startTimer();
 
-            // Periodically reload CSV data for updates
-            setInterval(loadCSVData, 30000); // Refresh every 30 seconds
+            // Periodically reload remote data for updates
+            setInterval(loadRemoteData, 30000); // Refresh every 30 seconds
         }
+        // Load data from the webhook URL. If JSON isn't returned, fall back to CSV file parsing.
+        async function loadRemoteData() {
+            const webhookUrl = 'https://quantumtaskai.app.n8n.cloud/webhook/read-sheet';
+            const listEl = document.getElementById('recentList');
+            listEl.innerHTML = `<div class="empty-state"><div class="icon">🔄</div><p>Loading...</p></div>`;
 
-        // Load data from CSV file
-        async function loadCSVData() {
             try {
-                const response = await fetch('Event Leads v1 - Sheet1.csv');
-                const csvText = await response.text();
-                const rows = csvText.split('\n').slice(1); // Skip header
+                const response = await fetch(webhookUrl, { cache: 'no-store' });
 
-                players = rows
-                    .map(row => {
-                        const columns = row.split(',');
-                        if (columns.length >= 5 && columns[2] && columns[3] && columns[4]) {
+                // Try parsing JSON first
+                let data = null;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    // If text looks like JSON, try parse
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        // Fallback: try treat as CSV file
+                        data = text;
+                    }
+                }
+
+                if (Array.isArray(data)) {
+                    // Expecting array of objects from webhook. Normalize to players.
+                    players = data
+                        .map(item => {
+                            if (!item) return null;
+
+                            // Map the webhook fields we observed: Name, Whatsapp Number, Score, Date
+                            const name = (item.Name || item.name || item.fullName || item['Full Name'] || item[2] || '').toString().trim();
+                            const phone = (item['Whatsapp Number'] ?? item['WhatsappNumber'] ?? item.phone ?? item.Phone ?? item.mobile ?? item[3] ?? '').toString().trim();
+                            const score = parseInt(item.Score ?? item.score ?? item.points ?? item['Points'] ?? item[4]) || 0;
+                            const ts = item.Date ?? item.date ?? item.timestamp ?? item.time ?? item.Timestamp ?? item[1] ?? Date.now();
+
                             return {
-                                name: columns[2].trim(),
-                                phone: columns[3].trim(),
-                                score: parseInt(columns[4].trim()) || 0,
-                                timestamp: new Date(columns[1] || Date.now()).getTime(),
+                                name: name,
+                                phone: phone,
+                                score: score,
+                                timestamp: new Date(ts).getTime(),
                                 isNew: false
                             };
-                        }
-                        return null;
-                    })
-                    .filter(p => p !== null && p.name && p.score > 0);
+                        })
+                        .filter(p => p !== null && p.name && !isNaN(p.score));
 
-                updateDisplay();
+                    updateDisplay();
+                    return;
+                }
+
+                // If data is raw CSV text (fallback)
+                if (typeof data === 'string') {
+                    const csvText = data;
+                    const rows = csvText.split('\n').slice(1); // Skip header if present
+
+                    players = rows
+                        .map(row => {
+                            const columns = row.split(',');
+                            if (columns.length >= 5 && columns[2] && columns[3] && columns[4]) {
+                                return {
+                                    name: columns[2].trim(),
+                                    phone: columns[3].trim(),
+                                    score: parseInt(columns[4].trim()) || 0,
+                                    timestamp: new Date(columns[1] || Date.now()).getTime(),
+                                    isNew: false
+                                };
+                            }
+                            return null;
+                        })
+                        .filter(p => p !== null && p.name && p.score > 0);
+
+                    updateDisplay();
+                    return;
+                }
+
+                console.warn('Unexpected webhook response shape', data);
+                listEl.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Unexpected data format from webhook</p></div>`;
             } catch (error) {
-                console.error('Error loading CSV data:', error);
+                console.error('Error loading remote data:', error);
+                const listEl2 = document.getElementById('recentList');
+                listEl2.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Failed to load data from webhook. Showing local CSV fallback (if available).</p></div>`;
+
+                // Try CSV fallback from local file
+                try {
+                    const resp = await fetch('Event Leads v1 - Sheet1.csv');
+                    const csvText = await resp.text();
+                    const rows = csvText.split('\n').slice(1); // Skip header
+
+                    players = rows
+                        .map(row => {
+                            const columns = row.split(',');
+                            if (columns.length >= 5 && columns[2] && columns[3] && columns[4]) {
+                                return {
+                                    name: columns[2].trim(),
+                                    phone: columns[3].trim(),
+                                    score: parseInt(columns[4].trim()) || 0,
+                                    timestamp: new Date(columns[1] || Date.now()).getTime(),
+                                    isNew: false
+                                };
+                            }
+                            return null;
+                        })
+                        .filter(p => p !== null && p.name && p.score > 0);
+
+                    updateDisplay();
+                } catch (csvErr) {
+                    console.error('CSV fallback failed:', csvErr);
+                }
             }
         }
 
