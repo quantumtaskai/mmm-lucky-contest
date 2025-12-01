@@ -615,6 +615,8 @@
         let isFetching = false;
         let refreshTimerId = null;
         let timerIntervalId = null;
+        // When true, automatically reset the timer to 8 hours when it reaches END
+        const AUTO_RESET_ON_END = true;
 
         // Initialize
         async function init() {
@@ -910,8 +912,17 @@
                 const distance = endTime - now;
 
                 if (distance < 0) {
-                    timeLeftEl.textContent = 'ENDED';
-                    return;
+                    if (AUTO_RESET_ON_END) {
+                        // Auto-extend the contest by 8 hours from now
+                        endTime = Date.now() + (8 * 60 * 60 * 1000);
+                        saveToLocalStorage();
+                        // recompute distance after reset
+                        // (fall through to set the display immediately)
+                        // Note: do not return; update UI below
+                    } else {
+                        timeLeftEl.textContent = 'ENDED';
+                        return;
+                    }
                 }
 
                 const hours = Math.floor(distance / (1000 * 60 * 60));
