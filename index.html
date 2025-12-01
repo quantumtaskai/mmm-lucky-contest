@@ -605,9 +605,35 @@
         let players = [];
         let endTime = null;
 
+        // Cached DOM refs and timers for better performance
+        const totalPlayersEl = document.getElementById('totalPlayers');
+        const highestScoreEl = document.getElementById('highestScore');
+        const timeLeftEl = document.getElementById('timeLeft');
+        const podiumEl = document.getElementById('podium');
+        const recentListEl = document.getElementById('recentList');
+
+        let isFetching = false;
+        let refreshTimerId = null;
+        let timerIntervalId = null;
+
         // Initialize
         async function init() {
-            // Load data from webhook (with CSV fallback)
+            // Try to load saved players quickly so UI is responsive, then refresh from webhook
+            try {
+                const saved = localStorage.getItem('players');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        players = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to parse saved players', e);
+            }
+
+            updateDisplay();
+
+            // Load fresh data from webhook (with CSV fallback)
             await loadRemoteData();
 
             // Load any additional data from local storage
@@ -625,117 +651,92 @@
             updateDisplay();
             startTimer();
 
-            // Periodically reload remote data for updates
-            setInterval(loadRemoteData, 30000); // Refresh every 30 seconds
+            // Periodically reload remote data for updates (avoid duplicates)
+            if (refreshTimerId) clearInterval(refreshTimerId);
+            refreshTimerId = setInterval(loadRemoteData, 30000); // Refresh every 30 seconds
         }
         // Load data from the webhook URL. If JSON isn't returned, fall back to CSV file parsing.
         async function loadRemoteData() {
+            if (isFetching) return; // prevent overlapping fetches
+            isFetching = true;
             const webhookUrl = 'https://quantumtaskai.app.n8n.cloud/webhook/read-sheet';
-            const listEl = document.getElementById('recentList');
-            listEl.innerHTML = `<div class="empty-state"><div class="icon">🔄</div><p>Loading...</p></div>`;
+
+            // show lightweight loading only if recentList is empty
+            if (!recentListEl.querySelector('.submission-item')) {
+                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">🔄</div><p>Loading...</p></div>`;
+            }
 
             try {
                 const response = await fetch(webhookUrl, { cache: 'no-store' });
-
-                // Try parsing JSON first
                 let data = null;
                 const contentType = response.headers.get('content-type') || '';
                 if (contentType.includes('application/json')) {
                     data = await response.json();
                 } else {
                     const text = await response.text();
-                    // If text looks like JSON, try parse
-                    try {
-                        data = JSON.parse(text);
-                    } catch (e) {
-                        // Fallback: try treat as CSV file
-                        data = text;
-                    }
+                    try { data = JSON.parse(text); } catch(e) { data = text; }
                 }
 
                 if (Array.isArray(data)) {
-                    // Expecting array of objects from webhook. Normalize to players.
-                    players = data
-                        .map(item => {
-                            if (!item) return null;
-
-                            // Map the webhook fields we observed: Name, Whatsapp Number, Score, Date
-                            const name = (item.Name || item.name || item.fullName || item['Full Name'] || item[2] || '').toString().trim();
-                            const phone = (item['Whatsapp Number'] ?? item['WhatsappNumber'] ?? item.phone ?? item.Phone ?? item.mobile ?? item[3] ?? '').toString().trim();
-                            const score = parseInt(item.Score ?? item.score ?? item.points ?? item['Points'] ?? item[4]) || 0;
-                            const ts = item.Date ?? item.date ?? item.timestamp ?? item.time ?? item.Timestamp ?? item[1] ?? Date.now();
-
-                            return {
-                                name: name,
-                                phone: phone,
-                                score: score,
-                                timestamp: new Date(ts).getTime(),
-                                isNew: false
-                            };
-                        })
-                        .filter(p => p !== null && p.name && !isNaN(p.score));
+                    // Normalize to players using observed webhook fields
+                    players = data.map(item => {
+                        if (!item) return null;
+                        const name = (item.Name || item.name || item['Full Name'] || '').toString().trim();
+                        const phone = (item['Whatsapp Number'] ?? item['WhatsappNumber'] ?? item.phone ?? '').toString().trim();
+                        const score = parseInt(item.Score ?? item.score ?? 0) || 0;
+                        const ts = item.Date ?? item.date ?? item.Timestamp ?? Date.now();
+                        return { name, phone, score, timestamp: new Date(ts).getTime(), isNew: false };
+                    }).filter(p => p !== null && p.name && !isNaN(p.score));
 
                     updateDisplay();
+                    saveToLocalStorage();
+                    isFetching = false;
                     return;
                 }
 
-                // If data is raw CSV text (fallback)
                 if (typeof data === 'string') {
+                    // fallback: parse CSV text
                     const csvText = data;
-                    const rows = csvText.split('\n').slice(1); // Skip header if present
-
-                    players = rows
-                        .map(row => {
-                            const columns = row.split(',');
-                            if (columns.length >= 5 && columns[2] && columns[3] && columns[4]) {
-                                return {
-                                    name: columns[2].trim(),
-                                    phone: columns[3].trim(),
-                                    score: parseInt(columns[4].trim()) || 0,
-                                    timestamp: new Date(columns[1] || Date.now()).getTime(),
-                                    isNew: false
-                                };
-                            }
-                            return null;
-                        })
-                        .filter(p => p !== null && p.name && p.score > 0);
+                    const rows = csvText.split('\n').slice(1);
+                    players = rows.map(row => {
+                        const cols = row.split(',');
+                        if (cols.length >=5 && cols[2] && cols[3] && cols[4]) {
+                            return { name: cols[2].trim(), phone: cols[3].trim(), score: parseInt(cols[4].trim())||0, timestamp: new Date(cols[1]||Date.now()).getTime(), isNew:false };
+                        }
+                        return null;
+                    }).filter(p => p !== null && p.name && p.score>0);
 
                     updateDisplay();
+                    saveToLocalStorage();
+                    isFetching = false;
                     return;
                 }
 
                 console.warn('Unexpected webhook response shape', data);
-                listEl.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Unexpected data format from webhook</p></div>`;
+                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Unexpected data format from webhook</p></div>`;
+                isFetching = false;
             } catch (error) {
                 console.error('Error loading remote data:', error);
-                const listEl2 = document.getElementById('recentList');
-                listEl2.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Failed to load data from webhook. Showing local CSV fallback (if available).</p></div>`;
+                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Failed to load data from webhook. Showing local CSV fallback (if available).</p></div>`;
 
-                // Try CSV fallback from local file
+                // local CSV fallback
                 try {
                     const resp = await fetch('Event Leads v1 - Sheet1.csv');
                     const csvText = await resp.text();
-                    const rows = csvText.split('\n').slice(1); // Skip header
-
-                    players = rows
-                        .map(row => {
-                            const columns = row.split(',');
-                            if (columns.length >= 5 && columns[2] && columns[3] && columns[4]) {
-                                return {
-                                    name: columns[2].trim(),
-                                    phone: columns[3].trim(),
-                                    score: parseInt(columns[4].trim()) || 0,
-                                    timestamp: new Date(columns[1] || Date.now()).getTime(),
-                                    isNew: false
-                                };
-                            }
-                            return null;
-                        })
-                        .filter(p => p !== null && p.name && p.score > 0);
+                    const rows = csvText.split('\n').slice(1);
+                    players = rows.map(row => {
+                        const cols = row.split(',');
+                        if (cols.length >=5 && cols[2] && cols[3] && cols[4]) {
+                            return { name: cols[2].trim(), phone: cols[3].trim(), score: parseInt(cols[4].trim())||0, timestamp: new Date(cols[1]||Date.now()).getTime(), isNew:false };
+                        }
+                        return null;
+                    }).filter(p => p !== null && p.name && p.score>0);
 
                     updateDisplay();
+                    isFetching = false;
                 } catch (csvErr) {
                     console.error('CSV fallback failed:', csvErr);
+                    isFetching = false;
                 }
             }
         }
@@ -787,102 +788,141 @@
 
         // Update statistics
         function updateStats() {
-            document.getElementById('totalPlayers').textContent = players.length;
-            
-            const highest = players.length > 0 
-                ? Math.max(...players.map(p => p.score))
-                : 0;
-            document.getElementById('highestScore').textContent = highest;
+            totalPlayersEl.textContent = players.length;
+
+            const highest = players.length > 0 ? Math.max(...players.map(p => p.score)) : 0;
+            highestScoreEl.textContent = highest;
         }
 
         // Update top 3 podium
         function updatePodium() {
-            const podiumEl = document.getElementById('podium');
             const sorted = [...players].sort((a, b) => b.score - a.score);
             const top3 = sorted.slice(0, 3);
-            
+
+            podiumEl.innerHTML = '';
+
             if (top3.length === 0) {
-                podiumEl.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">🎯</div>
-                        <p>Waiting for first players...</p>
-                    </div>
-                `;
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.innerHTML = `<div class="icon">🎯</div><p>Waiting for first players...</p>`;
+                podiumEl.appendChild(empty);
                 return;
             }
-            
-            let html = '';
-            
+
             const positions = ['second', 'first', 'third'];
             const medals = ['🥈', '👑', '🥉'];
-            
+
+            // Build DOM nodes to reduce reflow
+            const frag = document.createDocumentFragment();
             [1, 0, 2].forEach((index, displayIndex) => {
-                if (top3[index]) {
-                    const player = top3[index];
-                    const position = positions[displayIndex];
-                    const medal = medals[displayIndex];
-                    
-                    html += `
-                        <div class="podium-item ${position}">
-                            <div class="podium-rank">
-                                ${position === 'first' ? '<span class="crown">👑</span>' : ''}
-                                ${medal}
-                            </div>
-                            <div class="podium-name">${player.name}</div>
-                            <div class="podium-phone">${maskPhone(player.phone)}</div>
-                            <div class="podium-score">${player.score} pts</div>
-                        </div>
-                    `;
+                const player = top3[index];
+                if (!player) return;
+
+                const position = positions[displayIndex];
+                const medal = medals[displayIndex];
+
+                const item = document.createElement('div');
+                item.className = `podium-item ${position}`;
+
+                const rank = document.createElement('div');
+                rank.className = 'podium-rank';
+                if (position === 'first') {
+                    rank.innerHTML = `<span class="crown">👑</span>${medal}`;
+                } else {
+                    rank.textContent = medal;
                 }
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'podium-name';
+                nameEl.textContent = player.name;
+
+                const phoneEl = document.createElement('div');
+                phoneEl.className = 'podium-phone';
+                phoneEl.textContent = maskPhone(player.phone);
+
+                const scoreEl = document.createElement('div');
+                scoreEl.className = 'podium-score';
+                scoreEl.textContent = `${player.score} pts`;
+
+                item.appendChild(rank);
+                item.appendChild(nameEl);
+                item.appendChild(phoneEl);
+                item.appendChild(scoreEl);
+
+                frag.appendChild(item);
             });
-            
-            podiumEl.innerHTML = html;
+
+            podiumEl.appendChild(frag);
         }
 
         // Update recent 10 submissions
         function updateRecentList() {
-            const listEl = document.getElementById('recentList');
             const recent = [...players].slice(-10).reverse();
-            
+
+            recentListEl.innerHTML = '';
+
             if (recent.length === 0) {
-                listEl.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">⏳</div>
-                        <p>No submissions yet</p>
-                    </div>
-                `;
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.innerHTML = `<div class="icon">⏳</div><p>No submissions yet</p>`;
+                recentListEl.appendChild(empty);
                 return;
             }
-            
-            listEl.innerHTML = recent.map(player => `
-                <div class="submission-item ${player.isNew ? 'new' : ''}">
-                    <div class="submission-info">
-                        <div class="submission-name">${player.name}</div>
-                        <div class="submission-phone">${maskPhone(player.phone)}</div>
-                    </div>
-                    <div class="submission-score">${player.score}</div>
-                </div>
-            `).join('');
+
+            const frag = document.createDocumentFragment();
+            recent.forEach(player => {
+                const item = document.createElement('div');
+                item.className = `submission-item ${player.isNew ? 'new' : ''}`;
+
+                const info = document.createElement('div');
+                info.className = 'submission-info';
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'submission-name';
+                nameEl.textContent = player.name;
+
+                const phoneEl = document.createElement('div');
+                phoneEl.className = 'submission-phone';
+                phoneEl.textContent = maskPhone(player.phone);
+
+                info.appendChild(nameEl);
+                info.appendChild(phoneEl);
+
+                const scoreEl = document.createElement('div');
+                scoreEl.className = 'submission-score';
+                scoreEl.textContent = player.score;
+
+                item.appendChild(info);
+                item.appendChild(scoreEl);
+
+                frag.appendChild(item);
+            });
+
+            recentListEl.appendChild(frag);
         }
 
         // Timer countdown
         function startTimer() {
-            setInterval(() => {
+            // Clear previous timer if any
+            if (timerIntervalId) clearInterval(timerIntervalId);
+            function tick() {
                 const now = new Date().getTime();
                 const distance = endTime - now;
-                
+
                 if (distance < 0) {
-                    document.getElementById('timeLeft').textContent = 'ENDED';
+                    timeLeftEl.textContent = 'ENDED';
                     return;
                 }
-                
+
                 const hours = Math.floor(distance / (1000 * 60 * 60));
                 const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                document.getElementById('timeLeft').textContent = 
-                    `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-            }, 1000);
+
+                timeLeftEl.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            }
+
+            tick();
+            timerIntervalId = setInterval(tick, 1000);
         }
 
         function pad(num) {
@@ -930,6 +970,18 @@
                 saveToLocalStorage();
                 updateDisplay();
                 alert('Game reset successfully!');
+            }
+        }
+
+        // Persist game state (endTime and players) to localStorage
+        function saveToLocalStorage() {
+            try {
+                if (endTime) {
+                    localStorage.setItem('gameEndTime', String(endTime));
+                }
+                localStorage.setItem('players', JSON.stringify(players || []));
+            } catch (e) {
+                console.warn('Could not save to localStorage', e);
             }
         }
 
