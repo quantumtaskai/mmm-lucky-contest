@@ -529,10 +529,27 @@
             object-fit: contain;
             filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
         }
+        .qr-code {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 1000;
+            width: 120px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+            background: rgba(255,255,255,0.03);
+            padding: 6px;
+        }
+
+        @media (max-width: 600px) {
+            .qr-code { width: 88px; left: 14px; bottom: 14px; }
+        }
     </style>
 </head>
 <body>
     <img src="logo.png" alt="Logo" class="logo">
+        <img src="qr-code.png" alt="Scan to join" class="qr-code">
     <div class="container">
         <div class="header">
             <h1>Referrer Champion of the Day Contest</h1>
