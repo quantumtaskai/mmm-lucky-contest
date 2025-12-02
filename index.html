@@ -603,22 +603,11 @@
 
         // Initialize
         async function init() {
-            // Try to load saved players quickly so UI is responsive, then refresh from webhook
-            try {
-                const saved = localStorage.getItem('players');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        players = parsed;
-                    }
-                }
-            } catch (e) {
-                console.warn('Failed to parse saved players', e);
-            }
-
+            // Only use webhook data for display. Do NOT load players from localStorage
+            // or show CSV fallback — keep UI in a loading state until webhook responds.
             updateDisplay();
 
-            // Load fresh data from webhook (with CSV fallback)
+            // Load fresh data from webhook only
             await loadRemoteData();
 
             // Load any additional data from local storage
@@ -702,27 +691,11 @@
                 isFetching = false;
             } catch (error) {
                 console.error('Error loading remote data:', error);
-                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Failed to load data from webhook. Showing local CSV fallback (if available).</p></div>`;
-
-                // local CSV fallback
-                try {
-                    const resp = await fetch('Event Leads v1 - Sheet1.csv');
-                    const csvText = await resp.text();
-                    const rows = csvText.split('\n').slice(1);
-                    players = rows.map(row => {
-                        const cols = row.split(',');
-                        if (cols.length >=5 && cols[2] && cols[3] && cols[4]) {
-                            return { name: cols[2].trim(), phone: cols[3].trim(), score: parseInt(cols[4].trim())||0, timestamp: new Date(cols[1]||Date.now()).getTime(), isNew:false };
-                        }
-                        return null;
-                    }).filter(p => p !== null && p.name && p.score>0);
-
-                    updateDisplay();
-                    isFetching = false;
-                } catch (csvErr) {
-                    console.error('CSV fallback failed:', csvErr);
-                    isFetching = false;
-                }
+                // Do not populate from CSV or localStorage — keep UI empty and show an error.
+                players = [];
+                updateDisplay();
+                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Failed to load data from webhook. No local fallback configured.</p></div>`;
+                isFetching = false;
             }
         }
 
