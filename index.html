@@ -691,10 +691,10 @@
                 isFetching = false;
             } catch (error) {
                 console.error('Error loading remote data:', error);
-                // Do not populate from CSV or localStorage — keep UI empty and show an error.
+                // Do not populate from CSV or localStorage — show a simple waiting state.
                 players = [];
                 updateDisplay();
-                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>Failed to load data from webhook. No local fallback configured.</p></div>`;
+                recentListEl.innerHTML = `<div class="empty-state"><div class="icon">⏳</div><p>Waiting for data — retrying shortly.</p></div>`;
                 isFetching = false;
             }
         }
